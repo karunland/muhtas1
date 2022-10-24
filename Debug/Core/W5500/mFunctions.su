@@ -1,0 +1,5 @@
+../Core/W5500/mFunctions.c:5:19:mPrintf	16	static
+../Core/W5500/mFunctions.c:10:6:CsSelect	8	static
+../Core/W5500/mFunctions.c:15:6:CsDeselect	8	static
+../Core/W5500/mFunctions.c:20:9:SpiRb	16	static
+../Core/W5500/mFunctions.c:27:6:SpiWb	16	static
