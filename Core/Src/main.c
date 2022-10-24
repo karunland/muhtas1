@@ -142,6 +142,24 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+		switch (getSn_SR(SOCK_TCPS))
+		{
+			case SOCK_INIT:
+				connect(SN, serverIp, PORT);
+				break;
+			case SOCK_ESTABLISHED:
+				// If it is established continue
+				break;
+			case SOCK_CLOSE_WAIT:
+				disconnect(SN);
+				break;
+			case SOCK_CLOSED:
+				// Recrate socket
+				socket(SN, SOCK_STREAM, PORT, 0x00);
+				break;
+		}
+		HAL_Delay(250);
+	  }
   }
   /* USER CODE END 3 */
 }
