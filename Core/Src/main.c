@@ -73,9 +73,9 @@ static void MX_USART2_UART_Init(void);
 /* USER CODE BEGIN 0 */
 
 wiz_NetInfo netInfo = {.mac = {0x00, 0x08, 0xdc, 0xab, 0xcd, 0xef},   // Mac address
-						   .ip = {192, 168, 130, 25},                 // IP address
+						   .ip = {192, 168, 0, 25},                   // IP address
 						   .sn = {255, 255, 255, 0},                  // Subnet mask
-						   .gw = {192, 168, 130, 1}};				  // Gateway address
+						   .gw = {192, 168, 0, 1}};				            // Gateway address
 
 uint8_t memSize[2][8] = {{2, 2, 2, 2, 2, 2, 2, 2}, {2, 2, 2, 2, 2, 2, 2, 2}};
 uint8_t serverIp[] = {192, 168, 0, 15};
@@ -99,7 +99,20 @@ int main(void)
 
   /* USER CODE BEGIN Init */
 
-  // These Funcs return void
+  /* USER CODE END Init */
+
+  /* Configure the system clock */
+  SystemClock_Config();
+
+  /* USER CODE BEGIN SysInit */
+
+  /* USER CODE END SysInit */
+
+  /* Initialize all configured peripherals */
+  MX_GPIO_Init();
+  MX_SPI1_Init();
+  MX_USART2_UART_Init();
+  /* USER CODE BEGIN 2 */
   mPrintf("Wiznet 5500 starting to initialize\r\n");
 
   reg_wizchip_cs_cbfunc(CsSelect, CsDeselect);
@@ -117,22 +130,6 @@ int main(void)
   ctlnetwork(CN_GET_NETINFO, (void *)&netInfo);
 
   PRINT_NETINFO(netInfo);
-
-  /* USER CODE END Init */
-
-  /* Configure the system clock */
-  SystemClock_Config();
-
-  /* USER CODE BEGIN SysInit */
-
-  /* USER CODE END SysInit */
-
-  /* Initialize all configured peripherals */
-  MX_GPIO_Init();
-  MX_SPI1_Init();
-  MX_USART2_UART_Init();
-  /* USER CODE BEGIN 2 */
-
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -145,24 +142,32 @@ int main(void)
 		switch (getSn_SR(SOCK_TCPS))
 		{
 			case SOCK_INIT:
-				connect(SN, serverIp, PORT);
+//				connect(SN, serverIp, PORT);
+				listen(SOCK_TCPS);
+				mPrintf("Waiting to Connect\r\n");
 				break;
 			case SOCK_ESTABLISHED:
 				// If it is established continue
+				send(SN, (uint8_t *)"hello from stm32", 15);
+				mPrintf("Sending Message\r\n");
+				HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
 				break;
 			case SOCK_CLOSE_WAIT:
+				mPrintf("Socket is Closed\r\n");
 				disconnect(SN);
 				break;
 			case SOCK_CLOSED:
 				// Recrate socket
 				socket(SN, SOCK_STREAM, PORT, 0x00);
+				mPrintf("Socket is Created\r\n");
 				break;
 		}
-		HAL_Delay(250);
-	  }
+		mPrintf("--------\r\n");
+		HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
+		HAL_Delay(1000);
   }
-  /* USER CODE END 3 */
 }
+  /* USER CODE END 3 */
 
 /**
   * @brief System Clock Configuration
