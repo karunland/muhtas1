@@ -199,7 +199,7 @@ int main(void)
   ColorSet(0);
   // Start Timer IR
   HAL_TIM_Base_Start_IT(&htim3);
-
+  char* getDataFrom
 
 //  char strinArray[1024];
 //  char* stringMessage = strinArray;
@@ -220,8 +220,18 @@ int main(void)
         mPrintf("Waiting to Connect\r\n");
           break;
       case SOCK_ESTABLISHED:
+//		if (getSn_IR(SOCK_TCPS) & Sn_IR_CON)
+//		{
+//		  setSn_IR(SN, Sn_IR_CON);
+//		}
+//		int len = getSn_RX_RSR(SN);
+//		if (len)
+//		{
+//	      recv(SN, gDATABUF, len);
+//	      mPrintf(str)
+//		}
     	// If it is established continue
-    	send(SN, (uint8_t *)"hello from stm32", 15);
+    	send(SN, (uint8_t *)"hello from stm32", 16);
     	mPrintf("Sending Message\r\n");
     	  break;
       case SOCK_CLOSE_WAIT:
