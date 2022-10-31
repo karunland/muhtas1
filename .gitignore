@@ -1,5 +1,6 @@
 .settings/
 .vscode
+Debug/
 
 # Prerequisites
 *.d
