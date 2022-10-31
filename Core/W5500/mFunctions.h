@@ -19,6 +19,8 @@ void CsDeselect(void);
 uint8_t SpiRb(void);
 void SpiWb(uint8_t b);
 
+void ColorSet(int colorType);
+void SpeedSet(int speed);
 
 #define SEPARATOR            "=============================================\r\n"
 #define WELCOME_MSG  		 "Welcome to STM32Nucleo Ethernet configuration\r\n"
