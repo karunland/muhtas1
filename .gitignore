@@ -1,10 +1,6 @@
 .settings/
 .vscode
-Drivers/
 Debug/
-
-*.mxproject
-*.ioc
 
 # Prerequisites
 *.d
