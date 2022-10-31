@@ -54,6 +54,8 @@ char msg[60];
 /* Private variables ---------------------------------------------------------*/
 SPI_HandleTypeDef hspi1;
 
+TIM_HandleTypeDef htim3;
+
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
@@ -65,7 +67,66 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_SPI1_Init(void);
 static void MX_USART2_UART_Init(void);
+static void MX_TIM3_Init(void);
 /* USER CODE BEGIN PFP */
+
+//void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+//{
+//  if (htim == &htim3)
+//  {
+//    HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
+//    HAL_TIM_Base_Start_IT(&htim3);
+//  }
+//}
+
+
+#define IDLE   0
+#define DONE   1
+#define F_CLK  8000000UL
+
+volatile uint8_t gu8_State = IDLE;
+char* gu8_MSG[35] = {'\0'};
+volatile uint32_t gu32_T1 = 0;
+volatile uint32_t gu32_T2 = 0;
+volatile uint32_t gu32_Ticks = 0;
+volatile uint16_t gu16_TIM2_OVC = 0;
+volatile uint32_t gu32_Freq = 0;
+int i = 0;
+
+
+void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef* htim)
+{
+    if(gu8_State == IDLE)
+    {
+    	// CAPTURE COUNTER 1
+        gu32_T1 = TIM3->CCR1;
+        gu8_State = DONE;
+    }
+    else if(gu8_State == DONE)
+    {
+    	// CAPTURE COUNTER 2
+        gu32_T2 = TIM3->CCR1;
+        // Find difference
+        gu32_Ticks = (gu32_T2 + (gu16_TIM2_OVC * 65536)) - gu32_T1;
+        gu32_Freq = (uint32_t)(F_CLK/gu32_Ticks);
+
+        if(gu32_Freq != 0)
+        {
+          sprintf((char *)gu8_MSG, "%d.Frequency = %lu Hz\n\r", i, gu32_Freq);
+          mPrintf((char *)gu8_MSG);
+        }
+        gu8_State = IDLE;
+    }
+    i++;
+    return;
+}
+
+
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim)
+{
+    gu16_TIM2_OVC++;
+    return;
+}
 
 /* USER CODE END PFP */
 
@@ -112,6 +173,7 @@ int main(void)
   MX_GPIO_Init();
   MX_SPI1_Init();
   MX_USART2_UART_Init();
+  MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
   mPrintf("Wiznet 5500 starting to initialize\r\n");
 
@@ -130,6 +192,18 @@ int main(void)
   ctlnetwork(CN_GET_NETINFO, (void *)&netInfo);
 
   PRINT_NETINFO(netInfo);
+
+  // Set Device Freq to %20
+  SpeedSet(1);
+  //  Red Filter
+  ColorSet(0);
+  // Start Timer IR
+  HAL_TIM_Base_Start_IT(&htim3);
+  char* getDataFrom
+
+//  char strinArray[1024];
+//  char* stringMessage = strinArray;
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -139,35 +213,46 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-		switch (getSn_SR(SOCK_TCPS))
-		{
-			case SOCK_INIT:
-//				connect(SN, serverIp, PORT);
-				listen(SOCK_TCPS);
-				mPrintf("Waiting to Connect\r\n");
-				break;
-			case SOCK_ESTABLISHED:
-				// If it is established continue
-				send(SN, (uint8_t *)"hello from stm32", 15);
-				mPrintf("Sending Message\r\n");
-				HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
-				break;
-			case SOCK_CLOSE_WAIT:
-				mPrintf("Socket is Closed\r\n");
-				disconnect(SN);
-				break;
-			case SOCK_CLOSED:
-				// Recrate socket
-				socket(SN, SOCK_STREAM, PORT, 0x00);
-				mPrintf("Socket is Created\r\n");
-				break;
-		}
-		mPrintf("--------\r\n");
-		HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
-		HAL_Delay(1000);
+    switch (getSn_SR(SOCK_TCPS))
+    {
+      case SOCK_INIT:
+        listen(SOCK_TCPS);
+        mPrintf("Waiting to Connect\r\n");
+          break;
+      case SOCK_ESTABLISHED:
+//		if (getSn_IR(SOCK_TCPS) & Sn_IR_CON)
+//		{
+//		  setSn_IR(SN, Sn_IR_CON);
+//		}
+//		int len = getSn_RX_RSR(SN);
+//		if (len)
+//		{
+//	      recv(SN, gDATABUF, len);
+//	      mPrintf(str)
+//		}
+    	// If it is established continue
+    	send(SN, (uint8_t *)"hello from stm32", 16);
+    	mPrintf("Sending Message\r\n");
+    	  break;
+      case SOCK_CLOSE_WAIT:
+    	mPrintf("Socket is Closed\r\n");
+    	disconnect(SN);
+    	  break;
+      case SOCK_CLOSED:
+    	  // Recrate socket
+    	socket(SN, SOCK_STREAM, PORT, 0x00);
+    	mPrintf("Socket is Created\r\n");
+    	  break;
+	}
+//	sprintf(stringMessage , "Freq : %d ", (int)frequency);
+//	mPrintf(stringMessage);
+	mPrintf("----LOOP----\r\n");
+
+	HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
+	HAL_Delay(500);
   }
-}
   /* USER CODE END 3 */
+}
 
 /**
   * @brief System Clock Configuration
@@ -244,6 +329,54 @@ static void MX_SPI1_Init(void)
 }
 
 /**
+  * @brief TIM3 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM3_Init(void)
+{
+
+  /* USER CODE BEGIN TIM3_Init 0 */
+
+  /* USER CODE END TIM3_Init 0 */
+
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+  TIM_IC_InitTypeDef sConfigIC = {0};
+
+  /* USER CODE BEGIN TIM3_Init 1 */
+
+  /* USER CODE END TIM3_Init 1 */
+  htim3.Instance = TIM3;
+  htim3.Init.Prescaler = 1;
+  htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim3.Init.Period = 65536/2-1;
+  htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
+  if (HAL_TIM_IC_Init(&htim3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sConfigIC.ICPolarity = TIM_INPUTCHANNELPOLARITY_RISING;
+  sConfigIC.ICSelection = TIM_ICSELECTION_DIRECTTI;
+  sConfigIC.ICPrescaler = TIM_ICPSC_DIV1;
+  sConfigIC.ICFilter = 0;
+  if (HAL_TIM_IC_ConfigChannel(&htim3, &sConfigIC, TIM_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM3_Init 2 */
+
+  /* USER CODE END TIM3_Init 2 */
+
+}
+
+/**
   * @brief USART2 Initialization Function
   * @param None
   * @retval None
@@ -289,12 +422,14 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOD_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
+  __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(CS_GPIO_Port, CS_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, CS_Pin|S0_Pin|S1_Pin|S2_Pin
+                          |S3_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : LED_Pin */
   GPIO_InitStruct.Pin = LED_Pin;
@@ -303,12 +438,20 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(LED_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : CS_Pin */
-  GPIO_InitStruct.Pin = CS_Pin;
+  /*Configure GPIO pins : CS_Pin S0_Pin S1_Pin S2_Pin
+                           S3_Pin */
+  GPIO_InitStruct.Pin = CS_Pin|S0_Pin|S1_Pin|S2_Pin
+                          |S3_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(CS_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : OUT_Pin */
+  GPIO_InitStruct.Pin = OUT_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(OUT_GPIO_Port, &GPIO_InitStruct);
 
 }
 
