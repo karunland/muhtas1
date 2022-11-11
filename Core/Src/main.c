@@ -82,50 +82,37 @@ static void MX_TIM3_Init(void);
 
 #define IDLE   0
 #define DONE   1
-#define F_CLK  8000000UL
+#define F_CLK  72000000UL
 
-volatile uint8_t gu8_State = IDLE;
-char* gu8_MSG[35] = {'\0'};
-volatile uint32_t gu32_T1 = 0;
-volatile uint32_t gu32_T2 = 0;
-volatile uint32_t gu32_Ticks = 0;
-volatile uint16_t gu16_TIM2_OVC = 0;
-volatile uint32_t gu32_Freq = 0;
-int i = 0;
-
+volatile uint8_t state = IDLE;
+char message[35] = {};
+char* point = message;
+volatile uint32_t T1 = 0;
+volatile uint32_t T2 = 0;
+volatile uint32_t ticks = 0;
+volatile uint16_t TIM2_OVC = 0;
+volatile uint32_t frequency = 0;
 
 void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef* htim)
 {
-    if(gu8_State == IDLE)
+    if(state == IDLE)
     {
-    	// CAPTURE COUNTER 1
-        gu32_T1 = TIM3->CCR1;
-        gu8_State = DONE;
+        T1 = TIM2->CCR1;
+        TIM2_OVC = 0;
+        state = DONE;
     }
-    else if(gu8_State == DONE)
+    else if(state == DONE)
     {
-    	// CAPTURE COUNTER 2
-        gu32_T2 = TIM3->CCR1;
-        // Find difference
-        gu32_Ticks = (gu32_T2 + (gu16_TIM2_OVC * 65536)) - gu32_T1;
-        gu32_Freq = (uint32_t)(F_CLK/gu32_Ticks);
-
-        if(gu32_Freq != 0)
-        {
-          sprintf((char *)gu8_MSG, "%d.Frequency = %lu Hz\n\r", i, gu32_Freq);
-          mPrintf((char *)gu8_MSG);
-        }
-        gu8_State = IDLE;
+        T2 = TIM2->CCR1;
+        ticks = (T2 + (TIM2_OVC * 65536)) - T1;
+        frequency = (uint32_t)(F_CLK/ticks);
+        state = IDLE;
     }
-    i++;
-    return;
 }
-
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim)
 {
-    gu16_TIM2_OVC++;
-    return;
+    TIM2_OVC++;
 }
 
 /* USER CODE END PFP */
@@ -175,6 +162,10 @@ int main(void)
   MX_USART2_UART_Init();
   MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
+
+  HAL_TIM_Base_Start_IT(&htim3);
+  HAL_TIM_IC_Start_IT(&htim3, TIM_CHANNEL_1);
+
   mPrintf("Wiznet 5500 starting to initialize\r\n");
 
   reg_wizchip_cs_cbfunc(CsSelect, CsDeselect);
@@ -198,8 +189,9 @@ int main(void)
   //  Red Filter
   ColorSet(0);
   // Start Timer IR
-  HAL_TIM_Base_Start_IT(&htim3);
-  char* getDataFrom
+
+
+//  char* getDataFrom
 
 //  char strinArray[1024];
 //  char* stringMessage = strinArray;
@@ -244,6 +236,11 @@ int main(void)
     	mPrintf("Socket is Created\r\n");
     	  break;
 	}
+    if(frequency != 0)
+    {
+      sprintf(point, "Frequency = %lu Hz\n\r", frequency);
+      mPrintf(point);
+    }
 //	sprintf(stringMessage , "Freq : %d ", (int)frequency);
 //	mPrintf(stringMessage);
 	mPrintf("----LOOP----\r\n");
@@ -266,10 +263,13 @@ void SystemClock_Config(void)
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
+  RCC_OscInitStruct.HSEState = RCC_HSE_ON;
+  RCC_OscInitStruct.HSEPredivValue = RCC_HSE_PREDIV_DIV1;
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
-  RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
-  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_NONE;
+  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
+  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
+  RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL9;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
     Error_Handler();
@@ -279,12 +279,12 @@ void SystemClock_Config(void)
   */
   RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
                               |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
-  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_HSI;
+  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK)
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK)
   {
     Error_Handler();
   }
@@ -347,9 +347,9 @@ static void MX_TIM3_Init(void)
 
   /* USER CODE END TIM3_Init 1 */
   htim3.Instance = TIM3;
-  htim3.Init.Prescaler = 1;
+  htim3.Init.Prescaler = 0;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim3.Init.Period = 65536/2-1;
+  htim3.Init.Period = 65535;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
   if (HAL_TIM_IC_Init(&htim3) != HAL_OK)
@@ -428,8 +428,8 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, CS_Pin|S0_Pin|S1_Pin|S2_Pin
-                          |S3_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, CS_Pin|S1_Pin|S2_Pin|S3_Pin
+                          |S0_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : LED_Pin */
   GPIO_InitStruct.Pin = LED_Pin;
@@ -438,20 +438,14 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(LED_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : CS_Pin S0_Pin S1_Pin S2_Pin
-                           S3_Pin */
-  GPIO_InitStruct.Pin = CS_Pin|S0_Pin|S1_Pin|S2_Pin
-                          |S3_Pin;
+  /*Configure GPIO pins : CS_Pin S1_Pin S2_Pin S3_Pin
+                           S0_Pin */
+  GPIO_InitStruct.Pin = CS_Pin|S1_Pin|S2_Pin|S3_Pin
+                          |S0_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : OUT_Pin */
-  GPIO_InitStruct.Pin = OUT_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(OUT_GPIO_Port, &GPIO_InitStruct);
 
 }
 
