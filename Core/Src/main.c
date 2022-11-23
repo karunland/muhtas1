@@ -114,10 +114,10 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
-wiz_NetInfo netInfo = {.mac = {0x00, 0x08, 0xdc, 0xab, 0xcd, 0xef},   // Mac address
-						   .ip = {192, 168, 0, 25},                   // IP address
-						   .sn = {255, 255, 255, 0},                  // Subnet mask
-						   .gw = {192, 168, 0, 1}};				            // Gateway address
+wiz_NetInfo netInfo = {.mac = {0x00, 0x08, 0xdc, 0xab, 0xcd, 0xef}, // Mac address
+                       .ip = {192, 168, 0, 25},                     // IP address
+                       .sn = {255, 255, 255, 0},                    // Subnet mask
+                       .gw = {192, 168, 0, 1}};                     // Gateway address
 
 uint8_t memSize[2][8] = {{2, 2, 2, 2, 2, 2, 2, 2}, {2, 2, 2, 2, 2, 2, 2, 2}};
 uint8_t serverIp[] = {192, 168, 0, 15};
@@ -157,7 +157,6 @@ int main(void)
   MX_TIM3_Init();
   MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
-
   HAL_TIM_Base_Start_IT(&htim3);
   HAL_TIM_IC_Start_IT(&htim3, TIM_CHANNEL_1);
 
@@ -169,7 +168,8 @@ int main(void)
   if (ctlwizchip(CW_INIT_WIZCHIP, (void *)memSize) == -1)
   {
 	  mPrintf("WIZCHIP Initialized fail.\r\n");
-	  while (1);
+    while (1)
+      ;
   }
 
   mPrintf("Wiznet 5500 starting to initialize network settings\r\n");
@@ -179,17 +179,8 @@ int main(void)
 
   PRINT_NETINFO(netInfo);
 
-  // Set Device Freq to %20
   SpeedSet(1);
-  //  Red Filter
-  ColorSet(0);
-  // Start Timer IR
-
-
-//  char* getDataFrom
-
-//  char strinArray[1024];
-//  char* stringMessage = strinArray;
+  HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, 1);
 
   /* USER CODE END 2 */
 
@@ -224,19 +215,11 @@ int main(void)
         mPrintf("Waiting to Connect\r\n");
           break;
       case SOCK_ESTABLISHED:
-//		if (getSn_IR(SOCK_TCPS) & Sn_IR_CON)
-//		{
-//		  setSn_IR(SN, Sn_IR_CON);
-//		}
-//		int len = getSn_RX_RSR(SN);
-//		if (len)
-//		{
-//	      recv(SN, gDATABUF, len);
-//	      mPrintf(str)
-//		}
-    	// If it is established continue
-    	send(SN, (uint8_t *)"hello from stm32", 16);
-    	mPrintf("Sending Message\r\n");
+        if (message[0] != '\0')
+          send(SN, (uint8_t *)point, strlen(point));
+        else
+          send(SN, (uint8_t *)"None", 4);
+        mPrintf(point);
     	  break;
       case SOCK_CLOSE_WAIT:
     	mPrintf("Socket is Closed\r\n");
@@ -248,17 +231,8 @@ int main(void)
     	mPrintf("Socket is Created\r\n");
     	  break;
 	}
-    if(frequency != 0)
-    {
-      sprintf(point, "Frequency = %lu Hz\n\r", frequency);
-      mPrintf(point);
-    }
-//	sprintf(stringMessage , "Freq : %d ", (int)frequency);
-//	mPrintf(stringMessage);
 	mPrintf("----LOOP----\r\n");
-
-	HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
-	HAL_Delay(500);
+    HAL_Delay(150);
   }
   /* USER CODE END 3 */
 }
