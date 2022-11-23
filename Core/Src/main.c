@@ -72,49 +72,41 @@ static void MX_TIM3_Init(void);
 static void MX_TIM2_Init(void);
 /* USER CODE BEGIN PFP */
 
-//void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
-//{
-//  if (htim == &htim3)
-//  {
-//    HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
-//    HAL_TIM_Base_Start_IT(&htim3);
-//  }
-//}
-
-
-#define IDLE   0
-#define DONE   1
-#define F_CLK  72000000UL
+#define IDLE 0
+#define DONE 1
+#define F_CLK 72000000UL
 
 volatile uint8_t state = IDLE;
-char message[35] = {};
-char* point = message;
+char message[50] = {};
+char *point = message;
 volatile uint32_t T1 = 0;
-volatile uint32_t T2 = 0;
+volatile uint32_t T3 = 0;
 volatile uint32_t ticks = 0;
-volatile uint16_t TIM2_OVC = 0;
+volatile uint16_t TIM3_OVC = 0;
 volatile uint32_t frequency = 0;
+int mDelay = 75;
 
-void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef* htim)
+void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
 {
-    if(state == IDLE)
+  if (state == IDLE)
     {
-        T1 = TIM2->CCR1;
-        TIM2_OVC = 0;
+    T1 = TIM3->CCR1;
+    TIM3_OVC = 0;
         state = DONE;
+    message[0] = '\0';
     }
-    else if(state == DONE)
+  else if (state == DONE)
     {
-        T2 = TIM2->CCR1;
-        ticks = (T2 + (TIM2_OVC * 65536)) - T1;
-        frequency = (uint32_t)(F_CLK/ticks);
+    T3 = TIM3->CCR1;
+    ticks = (T3 + (TIM3_OVC * 65536)) - T1;
+    frequency = (uint32_t)(F_CLK / ticks);
         state = IDLE;
     }
 }
 
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim)
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
-    TIM2_OVC++;
+  TIM3_OVC++;
 }
 
 /* USER CODE END PFP */
