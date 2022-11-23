@@ -1,7 +1,7 @@
 .settings/
 .vscode
 Debug/
-
+*.launch
 # Prerequisites
 *.d
 
