@@ -200,6 +200,23 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+    if (frequency != 0 || 1)
+    {
+      ColorSet(RED);
+      HAL_Delay(mDelay);
+      int redFreq = frequency;
+
+      ColorSet(BLUE);
+      HAL_Delay(mDelay);
+      int blueFreq = frequency;
+
+      ColorSet(GREEN);
+      HAL_Delay(mDelay);
+      int greenFreq = frequency;
+
+      sprintf(point, "{\"red\":\"%d\",\"blue\":\"%d\":\"green\":\"%d\"}", redFreq, blueFreq, greenFreq);
+      mPrintf(point);
+    }
     switch (getSn_SR(SOCK_TCPS))
     {
       case SOCK_INIT:
