@@ -205,7 +205,7 @@ int main(void)
       HAL_Delay(mDelay);
       int greenFreq = frequency;
 
-      sprintf(point, "{\"red\":\"%d\",\"blue\":\"%d\":\"green\":\"%d\"}", redFreq, blueFreq, greenFreq);
+      sprintf(point, "{\"red\":\"%d\",\"blue\":\"%d\",\"green\":\"%d\"}", redFreq, blueFreq, greenFreq);
       mPrintf(point);
     }
     switch (getSn_SR(SOCK_TCPS))
