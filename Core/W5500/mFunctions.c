@@ -33,27 +33,24 @@ void SpiWb(uint8_t b)
 void ColorSet(int colorType)
 {
 	HAL_GPIO_WritePin(GPIOA, S2_Pin | S3_Pin, GPIO_PIN_RESET);
-    if (colorType == 0)
-    {	// RED
+    switch (colorType)
+    {
+        case RED:
         HAL_GPIO_WritePin(GPIOA, S2_Pin | S3_Pin, GPIO_PIN_RESET);
-    }
-    else if (colorType == 1)
-    {
-    	// GREEN
-        HAL_GPIO_WritePin(GPIOA, S2_Pin, GPIO_PIN_RESET);
-        HAL_GPIO_WritePin(GPIOA, S3_Pin, GPIO_PIN_SET);
-    }
-    else if (colorType == 2)
-    {
-    	// WHITE
+            break;
+        case GREEN:
+            HAL_GPIO_WritePin(GPIOA, S2_Pin | S3_Pin, GPIO_PIN_SET);
+            break;
+        case WHITE:
         HAL_GPIO_WritePin(GPIOA, S2_Pin, GPIO_PIN_SET);
         HAL_GPIO_WritePin(GPIOA, S3_Pin, GPIO_PIN_RESET);
-    }
-    else if (colorType == 3)
-    {
-    	// BLUE
-        HAL_GPIO_WritePin(GPIOA, S2_Pin, GPIO_PIN_SET);
+            break;
+        case BLUE:
+            HAL_GPIO_WritePin(GPIOA, S2_Pin, GPIO_PIN_RESET);
         HAL_GPIO_WritePin(GPIOA, S3_Pin, GPIO_PIN_SET);
+            break;
+        default:
+            break;
     }
 	return;
 }
@@ -61,27 +58,23 @@ void ColorSet(int colorType)
 void SpeedSet(int speed)
 {
 	HAL_GPIO_WritePin(GPIOA, S0_Pin | S1_Pin, GPIO_PIN_RESET);
-
-    if(speed == 0)
+    switch (speed)
     {
+		case POWER_DOWN:
         HAL_GPIO_WritePin(GPIOA, S0_Pin | S1_Pin, GPIO_PIN_RESET);
-    }
-    // %2
-    else if(speed == 1)
-    {
+			break;
+		case TWO_PERCENT:
         HAL_GPIO_WritePin(GPIOA, S0_Pin, GPIO_PIN_RESET);
         HAL_GPIO_WritePin(GPIOA, S1_Pin, GPIO_PIN_SET);
-    }
-    // %20
-    else if(speed == 2)
-    {
-        HAL_GPIO_WritePin(GPIOA, S0_Pin, GPIO_PIN_SET);
-        HAL_GPIO_WritePin(GPIOA, S1_Pin, GPIO_PIN_RESET);
-    }
-    // %100
-    else if(speed == 3)
-    {
+			break;
+		case TWENTY_PERCENT:
+			HAL_GPIO_WritePin(GPIOA, S0_Pin, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(GPIOA, S1_Pin, GPIO_PIN_SET);
+			break;
+		case HUNDRED_PERCENT:
         HAL_GPIO_WritePin(GPIOA, S0_Pin | S1_Pin, GPIO_PIN_SET);
+			break;
+		default:
+			break;
     }
-	return;
 }
