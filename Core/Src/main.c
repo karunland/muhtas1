@@ -55,7 +55,7 @@ char msg[60];
 /* Private variables ---------------------------------------------------------*/
 SPI_HandleTypeDef hspi1;
 
-TIM_HandleTypeDef htim2;
+TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim3;
 
 UART_HandleTypeDef huart2;
@@ -70,7 +70,7 @@ static void MX_GPIO_Init(void);
 static void MX_SPI1_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_TIM3_Init(void);
-static void MX_TIM2_Init(void);
+static void MX_TIM1_Init(void);
 /* USER CODE BEGIN PFP */
 
 #define IDLE 0
@@ -87,45 +87,111 @@ volatile uint16_t TIM3_OVC = 0;
 volatile uint32_t frequency = 0;
 int mDelay = 75;
 
+
+//
+uint32_t IC_Val1 = 0;
+uint32_t IC_Val2 = 0;
+uint32_t Difference = 0;
+uint8_t Is_First_Captured = 0;  // is the first value captured ?
+uint8_t Distance  = 0;
+
+#define TRIG_PIN GPIO_PIN_6
+#define TRIG_PORT GPIOB
+
+// Let's write the callback function
+
+
+
 void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
 {
-  if (state == IDLE)
-  {
-    T1 = TIM3->CCR1;
-    TIM3_OVC = 0;
-    state = DONE;
-    message[0] = '\0';
-  }
-  else if (state == DONE)
-  {
-    T3 = TIM3->CCR1;
-    ticks = (T3 + (TIM3_OVC * 65536)) - T1;
-    frequency = (uint32_t)(F_CLK / ticks);
-    state = IDLE;
-  }
+	if (htim->Instance == TIM3)  // if the interrupt source is channel1
+	{
+		if (state == IDLE)
+		{
+			T1 = TIM3->CCR1;
+			TIM3_OVC = 0;
+			state = DONE;
+			message[0] = '\0';
+		}
+		else if (state == DONE)
+		{
+			T3 = TIM3->CCR1;
+			ticks = (T3 + (TIM3_OVC * 65536)) - T1;
+			frequency = (uint32_t)(F_CLK / ticks);
+			state = IDLE;
+		}
+	}
+
+
+  if (htim->Instance == TIM1)  // if the interrupt source is channel1
+  	{
+  		if (Is_First_Captured==0) // if the first value is not captured
+  		{
+  			IC_Val1 = HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_1); // read the first value
+  			Is_First_Captured = 1;  // set the first captured as true
+  			// Now change the polarity to falling edge
+  			__HAL_TIM_SET_CAPTUREPOLARITY(htim, TIM_CHANNEL_1, TIM_INPUTCHANNELPOLARITY_FALLING);
+  		}
+
+  		else if (Is_First_Captured==1)   // if the first is already captured
+  		{
+  			IC_Val2 = HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_1);  // read second value
+  			__HAL_TIM_SET_COUNTER(htim, 0);  // reset the counter
+
+  			if (IC_Val2 > IC_Val1)
+  			{
+  				Difference = IC_Val2-IC_Val1;
+  			}
+
+  			else if (IC_Val1 > IC_Val2)
+  			{
+  				Difference = (0xffff - IC_Val1) + IC_Val2;
+  			}
+
+  			Distance = Difference * .034/2;
+  			Is_First_Captured = 0; // set it back to false
+
+  			// set polarity to rising edge
+  			__HAL_TIM_SET_CAPTUREPOLARITY(htim, TIM_CHANNEL_1, TIM_INPUTCHANNELPOLARITY_RISING);
+  			__HAL_TIM_DISABLE_IT(&htim1, TIM_IT_CC1);
+  		}
+  	}
 }
 
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+void HCSR04_Read (void)
 {
-  TIM3_OVC++;
+	HAL_GPIO_WritePin(Trigger_GPIO_Port, Trigger_Pin, GPIO_PIN_SET);  // pull the TRIG pin HIGH
+	delay(10);  // wait for 10 us
+	HAL_GPIO_WritePin(Trigger_GPIO_Port, Trigger_Pin, GPIO_PIN_RESET);  // pull the TRIG pin low
+
+	__HAL_TIM_ENABLE_IT(&htim1, TIM_IT_CC1);
 }
 
 uint32_t Read_hcsr04()
 {
-	uint32_t time;
+  uint32_t time;
 
-	HAL_GPIO_WritePin(Echo_GPIO_Port, Echo_Pin, RESET);
-	DWT_Delay(10);
-	HAL_GPIO_WritePin(Echo_GPIO_Port, Echo_Pin, SET);
+  HAL_GPIO_WritePin(Trigger_GPIO_Port, Trigger_Pin, RESET);
+  delay(10);
+  HAL_GPIO_WritePin(Trigger_GPIO_Port, Trigger_Pin, SET);
 
-	while (!HAL_GPIO_ReadPin(Trigger_GPIO_Port, Trigger_Pin));
+  while (!HAL_GPIO_ReadPin(Echo_GPIO_Port, Echo_Pin))
+    ;
 
-	while (HAL_GPIO_ReadPin(Trigger_GPIO_Port, Trigger_Pin))
-	{
-		time++;
-		DWT_Delay(1);
-	}
-	return time;
+  while (HAL_GPIO_ReadPin(Echo_GPIO_Port, Echo_Pin))
+  {
+    time++;
+    delay(1);
+  }
+  return time;
+}
+
+
+
+void delay(uint16_t us)
+{
+	__HAL_TIM_SET_COUNTER(&htim1,0);  // set the counter value a 0
+	while (__HAL_TIM_GET_COUNTER(&htim1) < us);  // wait for the counter to reach the us input in the parameter
 }
 
 /* USER CODE END PFP */
@@ -174,10 +240,11 @@ int main(void)
   MX_SPI1_Init();
   MX_USART2_UART_Init();
   MX_TIM3_Init();
-  MX_TIM2_Init();
+  MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
   HAL_TIM_Base_Start_IT(&htim3);
   HAL_TIM_IC_Start_IT(&htim3, TIM_CHANNEL_1);
+  HAL_TIM_IC_Start_IT(&htim1, TIM_CHANNEL_1);
 
   mPrintf("Wiznet 5500 starting to initialize\r\n");
 
@@ -194,12 +261,13 @@ int main(void)
   mPrintf("Wiznet 5500 starting to initialize network settings\r\n");
 
   ctlnetwork(CN_SET_NETINFO, (void *)&netInfo);
-  int ss = ctlnetwork(CN_GET_NETINFO, (void *)&netInfo);
+  ctlnetwork(CN_GET_NETINFO, (void *)&netInfo);
 
   PRINT_NETINFO(netInfo);
 
   SpeedSet(1);
   HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, 1);
+//  uint32_t distance = Read_hcsr04();
 
   /* USER CODE END 2 */
 
@@ -223,33 +291,32 @@ int main(void)
       ColorSet(GREEN);
       HAL_Delay(mDelay);
       int greenFreq = frequency;
-
-      uint32_t distance = Read_hcsr04();
-      sprintf(point, "{\"red\":\"%d\",\"blue\":\"%d\",\"green\":\"%d\",\"raw\":\"%lu\",\"distance\":\"%lu\"}", redFreq, blueFreq, greenFreq, distance, distance/59);
+      HCSR04_Read();
+      sprintf(point, "{\"red\":\"%d\",\"blue\":\"%d\",\"green\":\"%d\",\"distance\":\"%u\"}", redFreq, blueFreq, greenFreq, Distance);
       mPrintf(point);
     }
     switch (getSn_SR(SOCK_TCPS))
     {
-      case SOCK_INIT:
-        connect(SN, serverIp, PORT);
-        mPrintf("Waiting to Connect\r\n");
-        break;
-      case SOCK_ESTABLISHED:
-        if (message[0] != '\0')
-          send(SN, (uint8_t *)point, strlen(point));
-        else
-          send(SN, (uint8_t *)"None", 4);
-        mPrintf(point);
-        break;
-      case SOCK_CLOSE_WAIT:
-        mPrintf("Socket is Closed\r\n");
-        disconnect(SN);
-        break;
-      case SOCK_CLOSED:
-        // Recrate socket
-        socket(SN, SOCK_STREAM, PORT, 0x00);
-        mPrintf("Socket is Created\r\n");
-        break;
+    case SOCK_INIT:
+      connect(SN, serverIp, PORT);
+      mPrintf("Waiting to Connect\r\n");
+      break;
+    case SOCK_ESTABLISHED:
+      if (message[0] != '\0')
+        send(SN, (uint8_t *)point, strlen(point));
+      else
+        send(SN, (uint8_t *)"None", 4);
+      mPrintf(point);
+      break;
+    case SOCK_CLOSE_WAIT:
+      mPrintf("Socket is Closed\r\n");
+      disconnect(SN);
+      break;
+    case SOCK_CLOSED:
+      // Recrate socket
+      socket(SN, SOCK_STREAM, PORT, 0x00);
+      mPrintf("Socket is Created\r\n");
+      break;
     }
     mPrintf("----LOOP----\r\n");
     HAL_Delay(150);
@@ -335,47 +402,61 @@ static void MX_SPI1_Init(void)
 }
 
 /**
-  * @brief TIM2 Initialization Function
+  * @brief TIM1 Initialization Function
   * @param None
   * @retval None
   */
-static void MX_TIM2_Init(void)
+static void MX_TIM1_Init(void)
 {
 
-  /* USER CODE BEGIN TIM2_Init 0 */
+  /* USER CODE BEGIN TIM1_Init 0 */
 
-  /* USER CODE END TIM2_Init 0 */
+  /* USER CODE END TIM1_Init 0 */
 
   TIM_ClockConfigTypeDef sClockSourceConfig = {0};
   TIM_MasterConfigTypeDef sMasterConfig = {0};
+  TIM_IC_InitTypeDef sConfigIC = {0};
 
-  /* USER CODE BEGIN TIM2_Init 1 */
+  /* USER CODE BEGIN TIM1_Init 1 */
 
-  /* USER CODE END TIM2_Init 1 */
-  htim2.Instance = TIM2;
-  htim2.Init.Prescaler = 32000;
-  htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 1000;
-  htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-  htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-  if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
+  /* USER CODE END TIM1_Init 1 */
+  htim1.Instance = TIM1;
+  htim1.Init.Prescaler = 72-1;
+  htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim1.Init.Period = 65535-1;
+  htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim1.Init.RepetitionCounter = 0;
+  htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim1) != HAL_OK)
   {
     Error_Handler();
   }
   sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
-  if (HAL_TIM_ConfigClockSource(&htim2, &sClockSourceConfig) != HAL_OK)
+  if (HAL_TIM_ConfigClockSource(&htim1, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_IC_Init(&htim1) != HAL_OK)
   {
     Error_Handler();
   }
   sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
   sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-  if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim1, &sMasterConfig) != HAL_OK)
   {
     Error_Handler();
   }
-  /* USER CODE BEGIN TIM2_Init 2 */
+  sConfigIC.ICPolarity = TIM_INPUTCHANNELPOLARITY_RISING;
+  sConfigIC.ICSelection = TIM_ICSELECTION_DIRECTTI;
+  sConfigIC.ICPrescaler = TIM_ICPSC_DIV1;
+  sConfigIC.ICFilter = 0;
+  if (HAL_TIM_IC_ConfigChannel(&htim1, &sConfigIC, TIM_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM1_Init 2 */
 
-  /* USER CODE END TIM2_Init 2 */
+  /* USER CODE END TIM1_Init 2 */
 
 }
 
@@ -479,8 +560,8 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOC, LED_Pin|mS2_Pin|mS3_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, mS0_Pin|CS_Pin|mS1_Pin|S0_Pin
-                          |S1_Pin|S2_Pin|S3_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, mS0_Pin|CS_Pin|S0_Pin|S1_Pin
+                          |S2_Pin|S3_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, Trigger_Pin|Echo_Pin, GPIO_PIN_RESET);
@@ -492,10 +573,10 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : mS0_Pin CS_Pin mS1_Pin S0_Pin
-                           S1_Pin S2_Pin S3_Pin */
-  GPIO_InitStruct.Pin = mS0_Pin|CS_Pin|mS1_Pin|S0_Pin
-                          |S1_Pin|S2_Pin|S3_Pin;
+  /*Configure GPIO pins : mS0_Pin CS_Pin S0_Pin S1_Pin
+                           S2_Pin S3_Pin */
+  GPIO_InitStruct.Pin = mS0_Pin|CS_Pin|S0_Pin|S1_Pin
+                          |S2_Pin|S3_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
