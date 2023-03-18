@@ -268,7 +268,7 @@ int main(void)
   SpeedSet(1);
   HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, 1);
 //  uint32_t distance = Read_hcsr04();
-
+  int ret, size;
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -292,36 +292,31 @@ int main(void)
       HAL_Delay(mDelay);
       int greenFreq = frequency;
       HCSR04_Read();
-      sprintf(point, "{\"red\":\"%d\",\"blue\":\"%d\",\"green\":\"%d\",\"distance\":\"%u\"}", redFreq, blueFreq, greenFreq, Distance);
+      size = sprintf(point, "{\"red\":\"%d\",\"blue\":\"%d\",\"green\":\"%d\",\"distance\":\"%u\"}", redFreq, blueFreq, greenFreq, Distance);
       mPrintf(point);
     }
-    switch (getSn_SR(SOCK_TCPS))
+    switch (getSn_SR(0))
     {
-    case SOCK_INIT:
-      connect(SN, serverIp, PORT);
-      mPrintf("Waiting to Connect\r\n");
-      break;
-    case SOCK_ESTABLISHED:
-      if (message[0] != '\0')
-        send(SN, (uint8_t *)point, strlen(point));
-      else
-        send(SN, (uint8_t *)"None", 4);
-      mPrintf(point);
-      break;
-    case SOCK_CLOSE_WAIT:
-      mPrintf("Socket is Closed\r\n");
-      disconnect(SN);
+    case SOCK_UDP:
+
+      if (getSn_IR(0) & Sn_IR_RECV)
+      {
+        setSn_IR(0, Sn_IR_RECV);
+      }
+
+      if ((ret = getSn_RX_RSR(0)) > 0 || 1)
+      {
+        sendto(0, point, size, serverIp, PORT);
+      }
       break;
     case SOCK_CLOSED:
-      // Recrate socket
-      socket(SN, SOCK_STREAM, PORT, 0x00);
-      mPrintf("Socket is Created\r\n");
+      socket(0, Sn_MR_UDP, PORT, 0x00);
       break;
     }
-    mPrintf("----LOOP----\r\n");
-    HAL_Delay(150);
+	  mPrintf("----LOOP----\r\n");
+	  HAL_Delay(150);
   }
-  /* USER CODE END 3 */
+/* USER CODE END 3 */
 }
 
 /**
