@@ -115,8 +115,7 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
       state = IDLE;
     }
   }
-
-  if (htim->Instance == TIM1) // if the interrupt source is channel1
+  else if (htim->Instance == TIM1) // if the interrupt source is channel1
   {
     if (Is_First_Captured == 0) // if the first value is not captured
     {
@@ -221,6 +220,7 @@ int main(void)
   /* USER CODE BEGIN 2 */
   HAL_TIM_Base_Start_IT(&htim3);
   HAL_TIM_IC_Start_IT(&htim3, TIM_CHANNEL_1);
+  HAL_TIM_IC_Start_IT(&htim1, TIM_CHANNEL_1);
   HAL_TIM_Base_Start(&htim2);
   mPrintf("Wiznet 5500 starting to initialize\r\n");
 
@@ -449,7 +449,7 @@ static void MX_TIM2_Init(void)
 
   /* USER CODE END TIM2_Init 1 */
   htim2.Instance = TIM2;
-  htim2.Init.Prescaler = 71;
+  htim2.Init.Prescaler = 35;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim2.Init.Period = 65534;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
