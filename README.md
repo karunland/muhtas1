@@ -1,8 +1,13 @@
 # MÜHTAS-1 IoT Cihazı
 MÜHTAS-1, renk ve mesafe verilerini toplamak ve analiz etmek için tasarlanmış bir IoT (Internet of Things) cihazıdır. Bu cihaz STM32F103T8C6 MCU, TCS3200 renk sensörü, HC-SR04 uzaklık sensörü ve WIZnet 5500 Ethernet modülünü kullanır.
 
-![MÜHTAS-1 Cihazı](muhtas1-device-image-link)
 
+<img src="images/hardware.jpg" alt="Resim Açıklaması" width="290" height="auto">
+<img src="images/mcu1.jpg" alt="Resim Açıklaması" width="290" height="auto">
+<img src="images/mcu2.jpg" alt="Resim Açıklaması" width="290" height="auto">
+
+
+> Yukarıdaki iki fotoğrafta uzaklık sensörü bulunmamaktadır. Bunun sebebi 2023 güz döneminde bu sensörün projeye dahil olmamasıdır.
 ## Özellikler
 * **STM32F103T8C6 MCU:** Bu mikrodenetleyici, tüm sensörler arasındaki iletişimi ve veri toplama işlemlerini yönetir.
 * **TCS3200 Renk Sensörü:** Bu sensör, paketlerin renk bilgilerini toplar.
