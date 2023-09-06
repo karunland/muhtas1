@@ -22,7 +22,7 @@ MÜHTAS-1 is an IoT (Internet of Things) device designed to collect and analyze 
 * **TIM1:** Used to read data from the HC-SR04 Distance Sensor. It operates with a prescaler of 72-1 and a counter period of 65535-1.
 * **TIM3 CHA1:** Used to read data from the TCS3200 Color Sensor. It operates with a prescaler of 0 and a counter period of 65535.
 
-## Nasıl Çalışır?
+## How It Works
 
 The basic operational cycle of MÜHTAS-1 is outlined below:
 
